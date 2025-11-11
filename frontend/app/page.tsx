@@ -19,17 +19,25 @@ export default function Home() {
     nationalId: "",
   });
   
-  // Load saved PII from backend
+  // Load saved PII from Privy backend
   const [savedPII, setSavedPII] = useState<any>(null);
   const [isClient, setIsClient] = useState(false);
   const [piiLoading, setPIILoading] = useState(false);
+
+  // 🔗 Helper function to extract wallet address from Dynamic user
+  const getWalletAddress = (user: any): string | null => {
+    const walletCred = user?.verifiedCredentials?.find(
+      (cred: any) => cred.format === 'blockchain'
+    );
+    return walletCred?.address || null;
+  };
 
   // Wait for client-side hydration to complete
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Load saved PII from backend API when user connects
+  // Load saved PII from Privy API when user connects
   useEffect(() => {
     if (isClient && dynamicUser?.userId) {
       loadSavedPII();
@@ -39,9 +47,20 @@ export default function Home() {
   const loadSavedPII = async () => {
     if (!dynamicUser?.userId) return;
     
+    // 🔗 Get wallet address
+    const walletAddress = getWalletAddress(dynamicUser);
+    
+    if (!walletAddress) {
+      console.error('No wallet address found');
+      return;
+    }
+    
     setPIILoading(true);
     try {
-      const response = await fetch(`/api/store?wallet=${dynamicUser.userId}`);
+      // 🔗 Pass both userId and walletAddress
+      const response = await fetch(
+        `/api/store?userId=${dynamicUser.userId}&walletAddress=${walletAddress}`
+      );
       
       if (response.ok) {
         const result = await response.json();
@@ -88,14 +107,23 @@ export default function Home() {
       return;
     }
 
+    // 🔗 Get wallet address from Dynamic user
+    const walletAddress = getWalletAddress(dynamicUser);
+
+    if (!walletAddress) {
+      alert("❌ Could not find wallet address. Please reconnect your wallet.");
+      return;
+    }
+
     setPIILoading(true);
     try {
-      // Send to backend API
+      // 🔗 Send userId, walletAddress, and piiData to backend
       const response = await fetch('/api/store', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          walletAddress: dynamicUser?.userId,
+          userId: dynamicUser?.userId,
+          walletAddress: walletAddress,  // 🔗 NEW: Add wallet address
           piiData: piiData
         })
       });
@@ -103,9 +131,9 @@ export default function Home() {
       const result = await response.json();
 
       if (result.success) {
-        alert("✅ Your information has been securely stored!");
+        alert("✅ Your information has been securely stored in Privy!");
         setShowPIIForm(false);
-        // Reload saved data from backend
+        // Reload saved data from Privy
         await loadSavedPII();
       } else {
         throw new Error(result.error || 'Failed to save');
@@ -125,7 +153,7 @@ export default function Home() {
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-gray-800">
-              HumanityLink - ZK Verification
+              ZK Verification System
             </h1>
             <div className="h-10 w-40 bg-gray-200 rounded animate-pulse"></div>
           </div>
@@ -142,7 +170,7 @@ export default function Home() {
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">
-            HumanityLink - ZK Verification
+            ZK Verification System
           </h1>
           <DynamicWidget />
         </div>
@@ -257,14 +285,14 @@ export default function Home() {
               )}
             </div>
 
-            {/* Section 2: PII Storage (Backend API) */}
+            {/* Section 2: PII Storage with Privy */}
             <div className="bg-white rounded-lg shadow-lg p-8 space-y-6">
               <h2 className="text-2xl font-bold text-gray-800">
-                2️⃣ Store Contact Info (Secure Backend)
+                2️⃣ Store Contact Info (Encrypted with Privy)
               </h2>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
                 <p className="text-blue-800">
-                  <strong>🔒 Backend Storage:</strong> Your data is stored securely on our backend server. In production, this will be encrypted and stored in a database.
+                  <strong>🔒 Privy Encrypted Storage:</strong> Your data is encrypted and stored securely using Privy's infrastructure. Only you control access to this information.
                 </p>
               </div>
 
@@ -277,7 +305,7 @@ export default function Home() {
                 <div className="bg-green-50 border-2 border-green-200 rounded-lg p-6">
                   <div className="flex items-center gap-2 mb-4">
                     <span className="text-2xl">✅</span>
-                    <p className="font-bold text-green-800">Your information is securely stored</p>
+                    <p className="font-bold text-green-800">Your information is securely stored in Privy</p>
                   </div>
                   <div className="space-y-2 text-sm text-gray-700">
                     <p><strong>Name:</strong> {savedPII.fullName}</p>
@@ -321,7 +349,7 @@ export default function Home() {
               {showPIIForm && (
                 <div className="space-y-4 border-t pt-6">
                   <p className="text-sm text-gray-600 mb-4">
-                    Enter your contact information for aid organizations to reach you. All data is stored securely on our backend.
+                    Enter your contact information. All data will be encrypted and stored securely using Privy.
                   </p>
                   
                   <div>
@@ -381,7 +409,7 @@ export default function Home() {
                       disabled={piiLoading || !piiData.fullName || !piiData.phone || !piiData.address}
                       className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium transition-colors"
                     >
-                      {piiLoading ? "⏳ Saving..." : "🔒 Save to Backend"}
+                      {piiLoading ? "⏳ Saving..." : "🔒 Encrypt & Save to Privy"}
                     </button>
                     <button
                       onClick={() => setShowPIIForm(false)}
