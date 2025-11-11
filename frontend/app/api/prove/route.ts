@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     }
 
     // Use absolute path - most reliable
-    const command = `cd /home/lupo1977/HumanityLink/leo/age_check && leo run prove_is_adult ${birthYear}u16 ${currentYear}u16`;
+    const command = `cd /home/lupo1977/HumanityLink/leo/age_check && leo run prove_age ${birthYear}u16 ${currentYear}u16 18u16`;
     
     const { stdout } = await execAsync(command, {
       timeout: 30000,
